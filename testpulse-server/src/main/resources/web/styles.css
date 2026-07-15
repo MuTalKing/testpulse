@@ -1,0 +1,112 @@
+:root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --border: #e3e6ea;
+    --text: #1c2024;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --green: #16a34a;
+    --red: #dc2626;
+    --amber: #d97706;
+    --slate: #64748b;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .05);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0f1115;
+        --surface: #171a21;
+        --border: #262b33;
+        --text: #e6e8eb;
+        --muted: #9aa4b2;
+        --accent: #60a5fa;
+        --green: #4ade80;
+        --red: #f87171;
+        --amber: #fbbf24;
+        --slate: #94a3b8;
+        --shadow: none;
+    }
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.topbar {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 14px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.brand { font-weight: 700; font-size: 18px; color: var(--text); text-decoration: none; }
+.tagline { color: var(--muted); font-size: 13px; }
+
+.container { max-width: 1100px; margin: 24px auto; padding: 0 20px; }
+
+h1 { font-size: 20px; margin: 0 0 4px; }
+h2 { font-size: 16px; margin: 20px 0 10px; }
+.muted { color: var(--muted); }
+a { color: var(--accent); }
+
+.toolbar { display: flex; gap: 10px; align-items: center; margin: 12px 0 16px; flex-wrap: wrap; }
+input[type=text] {
+    padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px;
+    background: var(--surface); color: var(--text); font-size: 14px;
+}
+
+.card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px; box-shadow: var(--shadow); margin-bottom: 16px;
+}
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); background: var(--surface); }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr.clickable { cursor: pointer; }
+tbody tr.clickable:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+td.wrap { white-space: normal; }
+
+.badge {
+    display: inline-block; padding: 2px 9px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; line-height: 1.6;
+}
+.badge.passed { color: var(--green); background: color-mix(in srgb, var(--green) 15%, transparent); }
+.badge.failed { color: var(--red); background: color-mix(in srgb, var(--red) 15%, transparent); }
+.badge.broken { color: var(--amber); background: color-mix(in srgb, var(--amber) 15%, transparent); }
+.badge.skipped { color: var(--slate); background: color-mix(in srgb, var(--slate) 15%, transparent); }
+.badge.flaky { color: var(--amber); background: color-mix(in srgb, var(--amber) 15%, transparent); }
+
+.counts { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
+.count b { font-variant-numeric: tabular-nums; }
+.count.passed b { color: var(--green); }
+.count.failed b { color: var(--red); }
+.count.broken b { color: var(--amber); }
+.count.skipped b { color: var(--slate); }
+
+.btn {
+    display: inline-block; padding: 4px 10px; border: 1px solid var(--border);
+    border-radius: 7px; font-size: 12px; text-decoration: none; color: var(--text);
+    background: var(--surface); cursor: pointer;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.actions { display: flex; gap: 6px; }
+
+.msg { color: var(--red); font-size: 13px; margin-top: 2px; }
+pre.trace {
+    margin: 6px 0 0; padding: 10px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 7px; overflow-x: auto; font-size: 12px; white-space: pre;
+}
+details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.backlink { display: inline-block; margin-bottom: 12px; }
+.empty { padding: 40px; text-align: center; color: var(--muted); }

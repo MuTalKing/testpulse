@@ -1,0 +1,11 @@
+{
+  "name": "checkout invalid",
+  "fullName": "io.shop.OrderTest.checkoutInvalid",
+  "status": "failed",
+  "start": 1300,
+  "stop": 1450,
+  "statusDetails": { "message": "boom", "trace": "java.lang.AssertionError", "flaky": true },
+  "labels": [
+    { "name": "testpulse.id", "value": "orders.checkout.invalid" }
+  ]
+}

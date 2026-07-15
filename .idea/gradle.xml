@@ -10,6 +10,8 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/testpulse-cli" />
             <option value="$PROJECT_DIR$/testpulse-core" />
+            <option value="$PROJECT_DIR$/testpulse-report-model" />
+            <option value="$PROJECT_DIR$/testpulse-server" />
             <option value="$PROJECT_DIR$/testpulse-spring" />
           </set>
         </option>

@@ -1,0 +1,12 @@
+{
+  "name": "checkout happy path",
+  "fullName": "io.shop.OrderTest.checkoutHappyPath",
+  "status": "passed",
+  "start": 1000,
+  "stop": 1250,
+  "statusDetails": { "flaky": false },
+  "labels": [
+    { "name": "suite", "value": "io.shop" },
+    { "name": "testpulse.id", "value": "orders.checkout" }
+  ]
+}

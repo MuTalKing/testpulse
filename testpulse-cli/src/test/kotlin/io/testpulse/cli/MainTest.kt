@@ -32,4 +32,17 @@ class MainTest {
             run(arrayOf("upload", "--file", "does-not-exist.influx", "--endpoint", "http://localhost:8428")),
         )
     }
+
+    @Test
+    fun `report without allure is a usage error`() {
+        assertEquals(2, run(arrayOf("report", "--server", "http://localhost:8080")))
+    }
+
+    @Test
+    fun `report with missing allure directory is a usage error`() {
+        assertEquals(
+            2,
+            run(arrayOf("report", "--allure", "no-such-dir", "--server", "http://localhost:8080")),
+        )
+    }
 }

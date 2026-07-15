@@ -20,6 +20,7 @@ internal fun run(args: Array<String>): Int {
             0
         }
         "upload" -> upload(args.drop(1))
+        "report" -> report(args.drop(1))
         else -> {
             System.err.println("Unknown command: $command")
             printUsage()
@@ -65,6 +66,48 @@ private fun upload(args: List<String>): Int {
     }
 }
 
+private fun report(args: List<String>): Int {
+    val flags = parseFlags(args)
+
+    val allure = flags["allure"] ?: flags["a"]
+    if (allure == null) {
+        System.err.println("error: --allure is required")
+        return 2
+    }
+    val server = flags["server"] ?: flags["s"] ?: System.getenv("TESTPULSE_SERVER")
+    if (server.isNullOrBlank()) {
+        System.err.println("error: --server (or TESTPULSE_SERVER) is required")
+        return 2
+    }
+    val dir = Path.of(allure)
+    if (!Files.isDirectory(dir)) {
+        System.err.println("error: allure-results directory not found: $dir")
+        return 2
+    }
+
+    val run = AllureResults.readRun(
+        dir = dir,
+        project = flags["project"] ?: System.getenv("TESTPULSE_PROJECT"),
+        environment = flags["environment"] ?: System.getenv("TESTPULSE_ENVIRONMENT"),
+        branch = flags["branch"],
+        gitSha = flags["git-sha"],
+        buildUrl = flags["build-url"],
+    )
+    if (run.tests.isEmpty()) {
+        println("No allure results in $dir — nothing to upload.")
+        return 0
+    }
+
+    return try {
+        val id = ReportUploader(server).upload(run)
+        println("Uploaded run $id (${run.tests.size} tests) to $server.")
+        0
+    } catch (e: Exception) {
+        System.err.println("error: ${e.message}")
+        1
+    }
+}
+
 private fun parseFlags(args: List<String>): Map<String, String> {
     val flags = HashMap<String, String>()
     var i = 0
@@ -90,15 +133,24 @@ private fun parseFlags(args: List<String>): Map<String, String> {
 private fun printUsage() {
     println(
         """
-        testpulse — upload TestPulse metrics to VictoriaMetrics
+        testpulse — upload TestPulse metrics and run reports
 
         Usage:
           testpulse upload --file <metrics.influx> [--endpoint <url>] [--timestamp <epochMillis>]
+          testpulse report --allure <allure-results> [--server <url>] [--project <p>] [--environment <e>]
+                           [--branch <b>] [--git-sha <s>] [--build-url <u>]
 
-        Options:
+        upload — send FILE-sink metrics to VictoriaMetrics:
           -f, --file        Path to the metrics.influx written by the FILE sink (required)
           -e, --endpoint    VictoriaMetrics base URL (or the TESTPULSE_ENDPOINT env var)
           -t, --timestamp   Run-finish time in epoch millis (default: now)
+
+        report — send an allure-results run to the TestPulse server:
+          -a, --allure      Path to the allure-results directory (required)
+          -s, --server      TestPulse server base URL (or the TESTPULSE_SERVER env var)
+              --project     Project label (or TESTPULSE_PROJECT)
+              --environment Environment label (or TESTPULSE_ENVIRONMENT)
+              --branch, --git-sha, --build-url   Optional run metadata
         """.trimIndent(),
     )
 }

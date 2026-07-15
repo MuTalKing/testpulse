@@ -38,14 +38,17 @@ class TestPulseExtension : BeforeTestExecutionCallback, AfterTestExecutionCallba
 
     override fun beforeTestExecution(context: ExtensionContext) {
         if (!config.enabled) return
+        val testId = TestIds.compute(context)
         store(context).put(START_NANOS, System.nanoTime())
+        store(context).put(TEST_ID, testId)
+        AllureLabeler.stamp(testId)
     }
 
     override fun afterTestExecution(context: ExtensionContext) {
         if (!config.enabled) return
         val start = store(context).remove(START_NANOS) as? Long ?: return
 
-        val testId = TestIds.compute(context)
+        val testId = store(context).remove(TEST_ID) as? String ?: TestIds.compute(context)
         val passed = context.executionException.isEmpty
         val sample = MetricSample(
             testId = testId,
@@ -69,6 +72,7 @@ class TestPulseExtension : BeforeTestExecutionCallback, AfterTestExecutionCallba
         val NAMESPACE: ExtensionContext.Namespace =
             ExtensionContext.Namespace.create(TestPulseExtension::class.java)
         const val START_NANOS = "startNanos"
+        const val TEST_ID = "testId"
         const val NANOS_PER_SECOND = 1_000_000_000.0
 
         /** Shared across all extension instances in the JVM so retries of a test are correlated. */

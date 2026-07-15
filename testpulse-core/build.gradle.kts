@@ -20,6 +20,9 @@ dependencies {
     // The consuming project already brings JUnit 5 on the test classpath,
     // so the extension only needs the API at compile time.
     compileOnly("org.junit.jupiter:junit-jupiter-api:5.11.3")
+    // Optional: if Allure is on the consumer's classpath, the extension stamps a testpulse.id
+    // label so the run report can join to the metric series. Never forced on non-Allure projects.
+    compileOnly("io.qameta.allure:allure-java-commons:2.35.3")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
     testImplementation("org.junit.platform:junit-platform-testkit:1.11.3")

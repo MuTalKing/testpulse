@@ -45,8 +45,11 @@ VictoriaMetrics exposes this as two low-cardinality series:
 
 | Module             | Purpose                                                                 |
 |--------------------|-------------------------------------------------------------------------|
-| `testpulse-core`   | JUnit 5 extension, metric model, config (env + system properties), FILE sink. No Spring dependency. |
+| `testpulse-core`   | JUnit 5 extension, metric model, config (env + system properties), FILE & PUSH sinks. No Spring dependency. |
 | `testpulse-spring` | Optional config source that reads `testpulse.*` from `application.yml`/`.properties`. Spring is `compileOnly`. |
+| `testpulse-cli`    | CLI: `upload` (FILE-sink metrics → VictoriaMetrics) and `report` (allure-results → server). |
+| `testpulse-server` | Ktor + Postgres backend: ingests run reports (`POST /api/runs`), serves the run/detail/history API, and hosts the static report UI. |
+| `testpulse-report-model` | Shared run-ingest DTOs, so the CLI (sender) and server (receiver) can't drift apart. |
 
 ## Quick start
 
@@ -136,6 +139,17 @@ VictoriaMetrics — run this as a post-test CI step:
 (now). The uploader exits non-zero on failure so CI surfaces upload problems — unlike the extension,
 which never affects the test run.
 
+To ingest run details (statuses, messages, history) into the server, upload the `allure-results`
+your suite already produces:
+
+```bash
+testpulse report --allure ./allure-results --server http://localhost:8080 --project my-service --environment ci
+```
+
+When Allure is on the test classpath, the extension stamps its `test_id` onto each result as a
+`testpulse.id` label, so report rows join the metric series by the exact same id (`@StableId`
+included).
+
 ## Backend
 
 A ready-to-run metrics backend (VictoriaMetrics + Grafana with provisioned dashboards) lives in
@@ -171,8 +185,10 @@ Toolchain: Gradle 9.1, Kotlin 2.2.20, JVM target 17.
 - [x] Flaky detection (fail-then-pass within a run, same JVM)
 - [x] Backend — metrics plane: `docker compose up` (VictoriaMetrics + Grafana dashboards, `deploy/`)
 - [x] CLI uploader — metrics: `metrics.influx` → VictoriaMetrics (run-finish timestamp)
-- [ ] CLI uploader — run details: `allure-results` → report store
-- [ ] Backend — report plane: Postgres + object storage + report UI
+- [x] Backend — report plane (ingest): Ktor + Postgres, `/api/runs` ingest + read/history API
+- [x] CLI uploader — run details: parse `allure-results` → `POST /api/runs` (test_id via `testpulse.id` label)
+- [x] Report UI: run list, run detail (status/message/trace/flaky), per-test history, "Metrics" link to Grafana
+- [ ] Attachments → object storage (minio) + deep Allure detail link
 - [ ] Zero-infra static HTML report fallback
 
 ## License
