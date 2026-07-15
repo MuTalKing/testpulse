@@ -1,7 +1,12 @@
 # TestPulse backend
 
-A minimal, self-contained metrics backend: **VictoriaMetrics** (storage) + **Grafana** (dashboards,
-provisioned). One command up, no configuration.
+A self-contained backend, one command up, no configuration:
+
+- **VictoriaMetrics** — metric storage
+- **Grafana** — provisioned dashboards
+- **Postgres** — run/report storage
+- **MinIO** — attachment (screenshot/log) storage
+- **testpulse-server** — report ingest API + report UI (built from source on first run)
 
 > This is *not* part of the published library and never ships in the jar — it is deployed once per
 > team. Developers only add the `testpulse-core` dependency; they point their tests at this backend.
@@ -10,12 +15,16 @@ provisioned). One command up, no configuration.
 
 ```bash
 cd deploy
-docker compose up -d
+docker compose up -d          # first run builds the server image (~3 min)
 ```
 
-- Grafana: http://localhost:3000 (admin / admin) → dashboard **TestPulse — Overview**
+- Report UI:       http://localhost:8088
+- Grafana:         http://localhost:3000 (admin / admin) → **TestPulse — Overview**
 - VictoriaMetrics: http://localhost:8428
+- Postgres:        localhost:5432 (testpulse / testpulse)
+- MinIO console:   http://localhost:9001 (testpulse / testpulse)
 
+Rebuild the server after code changes: `docker compose up -d --build testpulse-server`.
 Stop (keep data): `docker compose down`. Wipe data too: `docker compose down -v`.
 
 ## Point tests at it

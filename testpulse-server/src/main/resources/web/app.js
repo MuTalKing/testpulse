@@ -100,11 +100,19 @@ async function viewRun(id) {
         const failInfo = (t.status === "failed" || t.status === "broken")
             ? `${t.message ? `<div class="msg">${esc(t.message)}</div>` : ""}${t.trace ? `<details><summary>trace</summary><pre class="trace">${esc(t.trace)}</pre></details>` : ""}`
             : "";
+        const atts = (t.attachments || []).map(a => {
+            const url = `/api/attachments/${encodeURIComponent(a.id)}`;
+            if (a.type && a.type.startsWith("image/")) {
+                return `<a href="${url}" target="_blank" rel="noopener" title="${esc(a.name || "")}"><img class="thumb" src="${url}" alt="${esc(a.name || "attachment")}"></a>`;
+            }
+            return `<a class="btn" href="${url}" target="_blank" rel="noopener">${esc(a.name || "attachment")}</a>`;
+        }).join("");
+        const attsBlock = atts ? `<div class="atts">${atts}</div>` : "";
         const histHref = t.testId ? `#/tests/${encodeURIComponent(t.testId)}` : null;
         return `
             <tr>
                 <td>${statusBadge(t.status)}${t.flaky ? ` <span class="badge flaky">flaky</span>` : ""}</td>
-                <td class="wrap">${esc(t.name || t.fullName || t.testId || "—")}${failInfo}</td>
+                <td class="wrap">${esc(t.name || t.fullName || t.testId || "—")}${failInfo}${attsBlock}</td>
                 <td>${esc(fmtDuration(t.durationMs))}</td>
                 <td><div class="actions">
                     ${histHref ? `<a class="btn" href="${histHref}">History</a>` : ""}
@@ -125,6 +133,7 @@ async function viewRun(id) {
                 <span class="count broken">broken <b>${r.broken}</b></span>
                 <span class="count skipped">skipped <b>${r.skipped}</b></span>
             </div>
+            ${config.allureUrl ? `<div class="actions" style="margin-top:10px"><a class="btn" href="${esc(config.allureUrl)}" target="_blank" rel="noopener">Allure report ↗</a></div>` : ""}
         </div>
         <div class="table-wrap"><table>
             <thead><tr><th>Status</th><th>Test</th><th>Duration</th><th></th></tr></thead>

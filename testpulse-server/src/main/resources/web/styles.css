@@ -103,6 +103,11 @@ td.wrap { white-space: normal; }
 .actions { display: flex; gap: 6px; }
 
 .msg { color: var(--red); font-size: 13px; margin-top: 2px; }
+.atts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+.thumb {
+    height: 56px; max-width: 120px; object-fit: cover;
+    border: 1px solid var(--border); border-radius: 6px; display: block;
+}
 pre.trace {
     margin: 6px 0 0; padding: 10px; background: var(--bg); border: 1px solid var(--border);
     border-radius: 7px; overflow-x: auto; font-size: 12px; white-space: pre;

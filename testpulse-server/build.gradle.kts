@@ -31,6 +31,7 @@ dependencies {
 
     implementation("com.zaxxer:HikariCP:5.1.0")
     implementation("org.postgresql:postgresql:42.7.4")
+    implementation("io.minio:minio:8.5.17")
     implementation("ch.qos.logback:logback-classic:1.5.12")
 
     testImplementation("io.ktor:ktor-server-test-host:3.5.1")

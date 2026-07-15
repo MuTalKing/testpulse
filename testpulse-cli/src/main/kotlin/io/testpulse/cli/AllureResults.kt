@@ -1,11 +1,13 @@
 package io.testpulse.cli
 
+import io.testpulse.report.model.AttachmentIngest
 import io.testpulse.report.model.RunIngest
 import io.testpulse.report.model.TestResultIngest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Base64
 import kotlin.io.path.readText
 
 /**
@@ -38,7 +40,7 @@ object AllureResults {
             branch = branch,
             gitSha = gitSha,
             buildUrl = buildUrl,
-            tests = results.map { it.toIngest() },
+            tests = results.map { it.toIngest(dir) },
         )
     }
 
@@ -52,7 +54,7 @@ object AllureResults {
         }
     }
 
-    private fun AllureResult.toIngest(): TestResultIngest {
+    private fun AllureResult.toIngest(dir: Path): TestResultIngest {
         val testId = labels.firstOrNull { it.name == TESTPULSE_ID_LABEL }?.value ?: fullName
         val duration = if (start != null && stop != null && stop >= start) stop - start else 0
         return TestResultIngest(
@@ -64,6 +66,32 @@ object AllureResults {
             message = statusDetails?.message,
             trace = statusDetails?.trace,
             flaky = statusDetails?.flaky ?: false,
+            attachments = collectAttachments().mapNotNull { it.read(dir) },
+        )
+    }
+
+    /** All attachments on the result and, recursively, on its steps. */
+    private fun AllureResult.collectAttachments(): List<AllureAttachment> {
+        val out = ArrayList<AllureAttachment>(attachments)
+        fun walk(steps: List<AllureStep>) {
+            for (step in steps) {
+                out.addAll(step.attachments)
+                walk(step.steps)
+            }
+        }
+        walk(steps)
+        return out
+    }
+
+    private fun AllureAttachment.read(dir: Path): AttachmentIngest? {
+        val src = source ?: return null
+        val file = dir.resolve(src)
+        if (!Files.isRegularFile(file)) return null
+        val bytes = Files.readAllBytes(file)
+        return AttachmentIngest(
+            name = name,
+            type = type,
+            contentBase64 = Base64.getEncoder().encodeToString(bytes),
         )
     }
 
@@ -76,6 +104,21 @@ object AllureResults {
         val stop: Long? = null,
         val statusDetails: AllureStatusDetails? = null,
         val labels: List<AllureLabel> = emptyList(),
+        val attachments: List<AllureAttachment> = emptyList(),
+        val steps: List<AllureStep> = emptyList(),
+    )
+
+    @Serializable
+    private data class AllureStep(
+        val attachments: List<AllureAttachment> = emptyList(),
+        val steps: List<AllureStep> = emptyList(),
+    )
+
+    @Serializable
+    private data class AllureAttachment(
+        val name: String? = null,
+        val source: String? = null,
+        val type: String? = null,
     )
 
     @Serializable

@@ -8,8 +8,10 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.http.content.staticResources
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.http.ContentType
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
@@ -19,6 +21,8 @@ import io.testpulse.server.db.Database
 import io.testpulse.server.db.RunRepository
 import io.testpulse.server.model.RunCreated
 import io.testpulse.server.model.UiConfig
+import io.testpulse.server.storage.InMemoryBlobStore
+import io.testpulse.server.storage.MinioBlobStore
 import kotlinx.serialization.json.Json
 
 /** External links the UI needs. */
@@ -66,6 +70,14 @@ fun Application.module(repository: RunRepository, config: ServerConfig = ServerC
             call.respond(repository.testHistory(testId, limit))
         }
 
+        get("/api/attachments/{id}") {
+            val id = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest)
+            val blob = repository.readAttachment(id) ?: return@get call.respond(HttpStatusCode.NotFound)
+            val type = blob.contentType?.let { runCatching { ContentType.parse(it) }.getOrNull() }
+                ?: ContentType.Application.OctetStream
+            call.respondBytes(blob.bytes, type)
+        }
+
         // Report UI (static, vanilla JS calling the API above). Registered last so it never
         // shadows the /api routes.
         staticResources("/", "web") {
@@ -75,7 +87,8 @@ fun Application.module(repository: RunRepository, config: ServerConfig = ServerC
 }
 
 fun main() {
-    val repository = RunRepository(Database.fromEnv()).apply { init() }
+    val blobStore = MinioBlobStore.fromEnv() ?: InMemoryBlobStore()
+    val repository = RunRepository(Database.fromEnv(), blobStore).apply { init() }
     val config = ServerConfig.fromEnv()
     val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
     embeddedServer(Netty, port = port, host = "0.0.0.0") { module(repository, config) }.start(wait = true)

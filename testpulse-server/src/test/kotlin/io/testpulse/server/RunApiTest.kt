@@ -5,15 +5,19 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.testApplication
+import io.testpulse.report.model.AttachmentIngest
 import io.testpulse.report.model.RunIngest
 import io.testpulse.report.model.TestResultIngest
 import io.testpulse.server.db.Database
 import io.testpulse.server.db.RunRepository
+import io.testpulse.server.storage.InMemoryBlobStore
+import java.util.Base64
 import io.testpulse.server.model.RunCreated
 import io.testpulse.server.model.RunDetail
 import io.testpulse.server.model.RunSummary
@@ -28,7 +32,7 @@ class RunApiTest {
 
     private fun freshRepository(): RunRepository {
         val url = "jdbc:h2:mem:tp_${UUID.randomUUID().toString().replace("-", "")};MODE=PostgreSQL;DB_CLOSE_DELAY=-1"
-        return RunRepository(Database.hikari(url, "sa", "")).apply { init() }
+        return RunRepository(Database.hikari(url, "sa", ""), InMemoryBlobStore()).apply { init() }
     }
 
     private val sampleRun = RunIngest(
@@ -100,6 +104,45 @@ class RunApiTest {
         val history = client.get("/api/tests/p.C%23a/history").body<List<TestHistoryEntry>>()
         assertEquals(2, history.size)
         assertTrue(history.all { it.status == "passed" })
+    }
+
+    @Test
+    fun `attachments are stored and served back`() = testApplication {
+        val repository = freshRepository()
+        application { module(repository) }
+        val client = createClient { install(ContentNegotiation) { json() } }
+
+        val payload = "screenshot-bytes".toByteArray()
+        val runWithAttachment = RunIngest(
+            project = "shop",
+            tests = listOf(
+                TestResultIngest(
+                    testId = "p.C#a", name = "a", status = "failed", durationMs = 100,
+                    attachments = listOf(
+                        AttachmentIngest(
+                            name = "failure.txt",
+                            type = "text/plain",
+                            contentBase64 = Base64.getEncoder().encodeToString(payload),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val created = client.post("/api/runs") {
+            contentType(ContentType.Application.Json); setBody(runWithAttachment)
+        }.body<RunCreated>()
+
+        val detail = client.get("/api/runs/${created.id}").body<RunDetail>()
+        val test = detail.tests.single()
+        assertEquals(1, test.attachments.size)
+        val attachment = test.attachments.single()
+        assertEquals("failure.txt", attachment.name)
+        assertEquals("text/plain", attachment.type)
+
+        val download = client.get("/api/attachments/${attachment.id}")
+        assertEquals(HttpStatusCode.OK, download.status)
+        assertEquals("screenshot-bytes", download.bodyAsText())
     }
 
     @Test

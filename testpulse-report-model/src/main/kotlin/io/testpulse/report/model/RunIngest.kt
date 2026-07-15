@@ -30,4 +30,13 @@ data class TestResultIngest(
     val trace: String? = null,
     val retries: Int = 0,
     val flaky: Boolean = false,
+    val attachments: List<AttachmentIngest> = emptyList(),
+)
+
+/** An attachment blob inlined as base64. Simple for typical screenshots/logs; large blobs later. */
+@Serializable
+data class AttachmentIngest(
+    val name: String? = null,
+    val type: String? = null,        // mime type, e.g. image/png
+    val contentBase64: String,
 )

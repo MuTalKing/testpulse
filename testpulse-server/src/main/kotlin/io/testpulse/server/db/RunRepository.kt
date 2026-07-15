@@ -2,20 +2,27 @@ package io.testpulse.server.db
 
 import io.testpulse.report.model.RunIngest
 import io.testpulse.report.model.TestResultIngest
+import io.testpulse.server.model.AttachmentView
 import io.testpulse.server.model.RunDetail
 import io.testpulse.server.model.RunSummary
 import io.testpulse.server.model.TestHistoryEntry
 import io.testpulse.server.model.TestResultView
-import java.sql.Connection
+import io.testpulse.server.storage.Blob
+import io.testpulse.server.storage.BlobStore
 import java.sql.ResultSet
+import java.util.Base64
 import java.util.UUID
 import javax.sql.DataSource
 
 /**
- * Persistence for runs and their test results. Plain JDBC with portable SQL so the same schema
- * runs on PostgreSQL (production) and H2 in PostgreSQL mode (tests).
+ * Persistence for runs, test results and attachments. Plain JDBC with portable SQL (Postgres in
+ * production, H2 in PostgreSQL mode in tests). Attachment blobs go to the [BlobStore]; only their
+ * metadata lives in the database.
  */
-class RunRepository(private val dataSource: DataSource) {
+class RunRepository(
+    private val dataSource: DataSource,
+    private val blobStore: BlobStore,
+) {
 
     fun init() {
         dataSource.connection.use { conn ->
@@ -56,8 +63,21 @@ class RunRepository(private val dataSource: DataSource) {
                     )
                     """.trimIndent(),
                 )
+                st.executeUpdate(
+                    """
+                    CREATE TABLE IF NOT EXISTS attachments (
+                        id             VARCHAR(36) PRIMARY KEY,
+                        test_result_id VARCHAR(36) NOT NULL REFERENCES test_results(id),
+                        name           VARCHAR(512),
+                        type           VARCHAR(255),
+                        storage_key    VARCHAR(128) NOT NULL,
+                        size           BIGINT NOT NULL
+                    )
+                    """.trimIndent(),
+                )
                 st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_test_results_run ON test_results(run_id)")
                 st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_test_results_testid ON test_results(test_id)")
+                st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_attachments_tr ON attachments(test_result_id)")
             }
         }
     }
@@ -92,28 +112,10 @@ class RunRepository(private val dataSource: DataSource) {
                     ps.executeUpdate()
                 }
 
-                conn.prepareStatement(
-                    """
-                    INSERT INTO test_results (id, run_id, test_id, full_name, name, status, duration_ms,
-                                              message, trace, retries, flaky)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """.trimIndent(),
-                ).use { ps ->
-                    for (test in ingest.tests) {
-                        ps.setString(1, UUID.randomUUID().toString())
-                        ps.setString(2, runId)
-                        ps.setString(3, test.testId)
-                        ps.setString(4, test.fullName)
-                        ps.setString(5, test.name)
-                        ps.setString(6, test.status.lowercase())
-                        ps.setLong(7, test.durationMs)
-                        ps.setString(8, test.message)
-                        ps.setString(9, test.trace)
-                        ps.setInt(10, test.retries)
-                        ps.setBoolean(11, test.flaky)
-                        ps.addBatch()
-                    }
-                    ps.executeBatch()
+                for (test in ingest.tests) {
+                    val testResultId = UUID.randomUUID().toString()
+                    insertTestResult(conn, testResultId, runId, test)
+                    insertAttachments(conn, testResultId, test)
                 }
 
                 conn.commit()
@@ -125,6 +127,50 @@ class RunRepository(private val dataSource: DataSource) {
             }
         }
         return runId
+    }
+
+    private fun insertTestResult(conn: java.sql.Connection, id: String, runId: String, test: TestResultIngest) {
+        conn.prepareStatement(
+            """
+            INSERT INTO test_results (id, run_id, test_id, full_name, name, status, duration_ms,
+                                      message, trace, retries, flaky)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """.trimIndent(),
+        ).use { ps ->
+            ps.setString(1, id)
+            ps.setString(2, runId)
+            ps.setString(3, test.testId)
+            ps.setString(4, test.fullName)
+            ps.setString(5, test.name)
+            ps.setString(6, test.status.lowercase())
+            ps.setLong(7, test.durationMs)
+            ps.setString(8, test.message)
+            ps.setString(9, test.trace)
+            ps.setInt(10, test.retries)
+            ps.setBoolean(11, test.flaky)
+            ps.executeUpdate()
+        }
+    }
+
+    private fun insertAttachments(conn: java.sql.Connection, testResultId: String, test: TestResultIngest) {
+        if (test.attachments.isEmpty()) return
+        conn.prepareStatement(
+            "INSERT INTO attachments (id, test_result_id, name, type, storage_key, size) VALUES (?, ?, ?, ?, ?, ?)",
+        ).use { ps ->
+            for (attachment in test.attachments) {
+                val bytes = Base64.getDecoder().decode(attachment.contentBase64)
+                val key = UUID.randomUUID().toString()
+                blobStore.put(key, bytes, attachment.type)
+                ps.setString(1, UUID.randomUUID().toString())
+                ps.setString(2, testResultId)
+                ps.setString(3, attachment.name)
+                ps.setString(4, attachment.type)
+                ps.setString(5, key)
+                ps.setLong(6, bytes.size.toLong())
+                ps.addBatch()
+            }
+            ps.executeBatch()
+        }
     }
 
     fun listRuns(project: String?, environment: String?, limit: Int): List<RunSummary> {
@@ -153,11 +199,28 @@ class RunRepository(private val dataSource: DataSource) {
                 ps.executeQuery().map { it.toRunSummary() }.firstOrNull()
             } ?: return null
 
-            val tests = conn.prepareStatement(
+            val rows = conn.prepareStatement(
                 "SELECT * FROM test_results WHERE run_id = ? ORDER BY status, full_name",
             ).use { ps ->
                 ps.setString(1, id)
-                ps.executeQuery().map { it.toTestResultView() }
+                ps.executeQuery().map { it.getString("id") to it.toTestResultView() }
+            }
+
+            val attachmentsByTest = conn.prepareStatement(
+                """
+                SELECT a.id, a.test_result_id, a.name, a.type
+                FROM attachments a JOIN test_results tr ON tr.id = a.test_result_id
+                WHERE tr.run_id = ?
+                """.trimIndent(),
+            ).use { ps ->
+                ps.setString(1, id)
+                ps.executeQuery().map {
+                    it.getString("test_result_id") to AttachmentView(it.getString("id"), it.getString("name"), it.getString("type"))
+                }.groupBy({ it.first }, { it.second })
+            }
+
+            val tests = rows.map { (testResultId, view) ->
+                view.copy(attachments = attachmentsByTest[testResultId] ?: emptyList())
             }
             return RunDetail(summary, tests)
         }
@@ -188,6 +251,20 @@ class RunRepository(private val dataSource: DataSource) {
                 }
             }
         }
+    }
+
+    /** Fetch an attachment's bytes for the download endpoint. */
+    fun readAttachment(id: String): Blob? {
+        val meta = dataSource.connection.use { conn ->
+            conn.prepareStatement("SELECT storage_key, type FROM attachments WHERE id = ?").use { ps ->
+                ps.setString(1, id)
+                ps.executeQuery().map { it.getString("storage_key") to it.getString("type") }.firstOrNull()
+            }
+        } ?: return null
+
+        val (key, type) = meta
+        val blob = blobStore.get(key) ?: return null
+        return Blob(blob.bytes, type ?: blob.contentType)
     }
 
     private fun ResultSet.toRunSummary() = RunSummary(

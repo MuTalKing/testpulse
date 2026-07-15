@@ -30,6 +30,13 @@ class AllureResultsTest {
         assertTrue(failed.flaky)
         assertEquals("boom", failed.message)
         assertEquals("java.lang.AssertionError", failed.trace)
+
+        // result-level + step-level attachments, both read and base64-encoded
+        assertEquals(2, failed.attachments.size)
+        val response = failed.attachments.first { it.name == "response.txt" }
+        assertEquals("text/plain", response.type)
+        assertEquals("response body 500", String(java.util.Base64.getDecoder().decode(response.contentBase64)).trim())
+        assertTrue(failed.attachments.any { it.name == "screenshot.png" && it.type == "image/png" })
     }
 
     @Test

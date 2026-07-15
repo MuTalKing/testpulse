@@ -48,6 +48,14 @@ data class TestResultView(
     val trace: String?,
     val retries: Int,
     val flaky: Boolean,
+    val attachments: List<AttachmentView> = emptyList(),
+)
+
+@Serializable
+data class AttachmentView(
+    val id: String,
+    val name: String?,
+    val type: String?,
 )
 
 /** One point in a single test's cross-run history. */

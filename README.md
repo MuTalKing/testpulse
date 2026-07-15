@@ -150,18 +150,29 @@ When Allure is on the test classpath, the extension stamps its `test_id` onto ea
 `testpulse.id` label, so report rows join the metric series by the exact same id (`@StableId`
 included).
 
-## Backend
-
-A ready-to-run metrics backend (VictoriaMetrics + Grafana with provisioned dashboards) lives in
-[`deploy/`](deploy/) — deployed once per team, never bundled in the library:
+No backend at all? Render a single self-contained HTML file (attachments embedded, no external
+requests) and open it in a browser — the five-minute entry point:
 
 ```bash
-cd deploy && docker compose up -d
-# Grafana http://localhost:3000 (admin/admin) → "TestPulse — Overview"
+testpulse html --allure ./allure-results --out testpulse-report.html
 ```
 
-Then point your tests at it with `TESTPULSE_OUTPUT=push` and `TESTPULSE_ENDPOINT=http://localhost:8428`.
-See [deploy/README.md](deploy/README.md).
+## Backend
+
+The whole backend — VictoriaMetrics, Grafana (provisioned dashboards), Postgres, and the report
+server/UI — runs from [`deploy/`](deploy/) with one command (deployed once per team, never bundled
+in the library):
+
+```bash
+cd deploy && docker compose up -d   # first run builds the server image
+```
+
+- Report UI: http://localhost:8088
+- Grafana:   http://localhost:3000 (admin/admin) → "TestPulse — Overview"
+
+Point your tests at it with `TESTPULSE_OUTPUT=push` and `TESTPULSE_ENDPOINT=http://localhost:8428`
+(metrics), and `testpulse report --server http://localhost:8088` (run details). See
+[deploy/README.md](deploy/README.md).
 
 ## Building
 
@@ -188,8 +199,9 @@ Toolchain: Gradle 9.1, Kotlin 2.2.20, JVM target 17.
 - [x] Backend — report plane (ingest): Ktor + Postgres, `/api/runs` ingest + read/history API
 - [x] CLI uploader — run details: parse `allure-results` → `POST /api/runs` (test_id via `testpulse.id` label)
 - [x] Report UI: run list, run detail (status/message/trace/flaky), per-test history, "Metrics" link to Grafana
-- [ ] Attachments → object storage (minio) + deep Allure detail link
-- [ ] Zero-infra static HTML report fallback
+- [x] Attachments → object storage (minio), thumbnails in the UI, configurable Allure deep-link
+- [x] Server containerized — `docker compose up` brings up the whole stack
+- [x] Zero-infra static HTML report fallback (`testpulse html`)
 
 ## License
 

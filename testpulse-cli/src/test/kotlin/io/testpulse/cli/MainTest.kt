@@ -45,4 +45,14 @@ class MainTest {
             run(arrayOf("report", "--allure", "no-such-dir", "--server", "http://localhost:8080")),
         )
     }
+
+    @Test
+    fun `html without allure is a usage error`() {
+        assertEquals(2, run(arrayOf("html")))
+    }
+
+    @Test
+    fun `html with missing allure directory is a usage error`() {
+        assertEquals(2, run(arrayOf("html", "--allure", "no-such-dir")))
+    }
 }
