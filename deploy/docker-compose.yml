@@ -47,6 +47,8 @@ services:
     restart: unless-stopped
 
   testpulse-server:
+    # Pull the published image (docker compose pull), or build from source (docker compose up --build).
+    image: ghcr.io/mutalking/testpulse-server:${TESTPULSE_SERVER_TAG:-latest}
     build:
       context: ..
       dockerfile: deploy/Dockerfile

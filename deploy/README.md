@@ -15,8 +15,19 @@ A self-contained backend, one command up, no configuration:
 
 ```bash
 cd deploy
-docker compose up -d          # first run builds the server image (~3 min)
+docker compose pull           # pull the published server image from GHCR
+docker compose up -d
 ```
+
+Or build the server from source instead of pulling:
+
+```bash
+docker compose up -d --build  # first build ~3 min
+```
+
+The published image is `ghcr.io/mutalking/testpulse-server` (pin a version with
+`TESTPULSE_SERVER_TAG=0.0.1`); it's built and pushed by the `publish-server` GitHub Actions
+workflow on a `v*` tag.
 
 - Report UI:       http://localhost:8088
 - Grafana:         http://localhost:3000 (admin / admin) → **TestPulse — Overview**
