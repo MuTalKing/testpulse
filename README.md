@@ -120,6 +120,35 @@ fun checkoutHappyPath() { /* ... */ }
 - **One sample per test per run**, batched to the backend as a post-CI step — tests never take a
   runtime dependency on the metrics backend.
 
+## CLI uploader
+
+In FILE mode the extension writes `<outputDir>/metrics.influx` with no timestamps. The
+`testpulse-cli` uploader stamps every record with a single run-finish time and posts the batch to
+VictoriaMetrics — run this as a post-test CI step:
+
+```bash
+./gradlew :testpulse-cli:installDist
+./testpulse-cli/build/install/testpulse/bin/testpulse \
+  upload --file build/testpulse/metrics.influx --endpoint http://localhost:8428
+```
+
+`--endpoint` falls back to `TESTPULSE_ENDPOINT`; `--timestamp <epochMillis>` overrides the default
+(now). The uploader exits non-zero on failure so CI surfaces upload problems — unlike the extension,
+which never affects the test run.
+
+## Backend
+
+A ready-to-run metrics backend (VictoriaMetrics + Grafana with provisioned dashboards) lives in
+[`deploy/`](deploy/) — deployed once per team, never bundled in the library:
+
+```bash
+cd deploy && docker compose up -d
+# Grafana http://localhost:3000 (admin/admin) → "TestPulse — Overview"
+```
+
+Then point your tests at it with `TESTPULSE_OUTPUT=push` and `TESTPULSE_ENDPOINT=http://localhost:8428`.
+See [deploy/README.md](deploy/README.md).
+
 ## Building
 
 Requires a JDK (17+). Uses the Gradle wrapper.
@@ -140,8 +169,10 @@ Toolchain: Gradle 9.1, Kotlin 2.2.20, JVM target 17.
 - [x] Auto-registration via `ServiceLoader`
 - [x] PUSH sink → VictoriaMetrics
 - [x] Flaky detection (fail-then-pass within a run, same JVM)
-- [ ] CLI uploader (`metrics.influx` + `allure-results` → backend)
-- [ ] Backend: `docker compose up` (VictoriaMetrics + Postgres + minio + Grafana + report UI)
+- [x] Backend — metrics plane: `docker compose up` (VictoriaMetrics + Grafana dashboards, `deploy/`)
+- [x] CLI uploader — metrics: `metrics.influx` → VictoriaMetrics (run-finish timestamp)
+- [ ] CLI uploader — run details: `allure-results` → report store
+- [ ] Backend — report plane: Postgres + object storage + report UI
 - [ ] Zero-infra static HTML report fallback
 
 ## License

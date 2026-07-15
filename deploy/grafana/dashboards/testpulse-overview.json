@@ -1,0 +1,185 @@
+{
+  "uid": "testpulse-overview",
+  "title": "TestPulse — Overview",
+  "tags": ["testpulse"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-30d", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "environment",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+        "query": { "query": "label_values(autotest_passed, environment)", "refId": "env" },
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "project",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+        "query": { "query": "label_values(autotest_passed, project)", "refId": "proj" },
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "test_id",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+        "query": { "query": "label_values(autotest_passed{environment=~\"$environment\",project=~\"$project\"}, test_id)", "refId": "tid" },
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Pass rate (7d)",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "yellow", "value": 0.9 },
+            { "color": "green", "value": 0.99 }
+          ] }
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "avg(avg_over_time(autotest_passed{environment=~\"$environment\",project=~\"$project\",test_id=~\"$test_id\"}[7d]))" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Flaky tests (7d)",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 1 },
+            { "color": "red", "value": 5 }
+          ] }
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "instant": true,
+          "expr": "count(max_over_time(autotest_flaky{environment=~\"$environment\",project=~\"$project\",test_id=~\"$test_id\"}[7d])) or vector(0)" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Tests tracked",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "options": { "colorMode": "none", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "instant": true,
+          "expr": "count(count by (test_id) (last_over_time(autotest_passed{environment=~\"$environment\",project=~\"$project\"}[7d])))" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Avg duration (1d)",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "options": { "colorMode": "none", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "expr": "avg(avg_over_time(autotest_duration_seconds{environment=~\"$environment\",project=~\"$project\",test_id=~\"$test_id\"}[1d]))" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Duration trend — avg per day",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 5 } } },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "legendFormat": "{{test_id}}",
+          "expr": "avg_over_time(autotest_duration_seconds{environment=~\"$environment\",project=~\"$project\",test_id=~\"$test_id\"}[1d])" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Pass rate trend — 7d rolling",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 5 } } },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "legendFormat": "{{test_id}}",
+          "expr": "avg_over_time(autotest_passed{environment=~\"$environment\",project=~\"$project\",test_id=~\"$test_id\"}[7d])" }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Top 10 slowest (avg 1d)",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 14 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "options": { "showHeader": true },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "instant": true, "format": "table",
+          "expr": "topk(10, avg_over_time(autotest_duration_seconds{environment=~\"$environment\",project=~\"$project\"}[1d]))" }
+      ],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "class": true, "suite": true }, "renameByName": { "Value": "avg duration (s)" } } }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Least stable (pass rate 7d)",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 14 },
+      "fieldConfig": { "defaults": { "unit": "percentunit" } },
+      "options": { "showHeader": true },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+          "instant": true, "format": "table",
+          "expr": "bottomk(10, avg_over_time(autotest_passed{environment=~\"$environment\",project=~\"$project\"}[7d]))" }
+      ],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "class": true, "suite": true }, "renameByName": { "Value": "pass rate" } } }
+      ]
+    }
+  ]
+}

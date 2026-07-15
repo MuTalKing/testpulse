@@ -1,0 +1,40 @@
+name: testpulse
+
+# Minimal TestPulse backend: metrics store + dashboards.
+# Point the library at it with:  TESTPULSE_OUTPUT=push  TESTPULSE_ENDPOINT=http://localhost:8428
+#
+# The run-details plane (Postgres + object storage + report UI) arrives with the CLI uploader.
+
+services:
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.147.0
+    container_name: testpulse-vm
+    ports:
+      - "8428:8428"           # HTTP API + Influx line-protocol ingestion at /write
+    volumes:
+      - vmdata:/victoria-metrics-data
+    command:
+      - "-storageDataPath=/victoria-metrics-data"
+      - "-retentionPeriod=12"  # months
+      - "-httpListenAddr=:8428"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.0.3
+    container_name: testpulse-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_DEFAULT_THEME=light
+    volumes:
+      # Datasource + dashboards are provisioned from files, so Grafana is stateless here.
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - victoriametrics
+    restart: unless-stopped
+
+volumes:
+  vmdata:

@@ -19,4 +19,5 @@ dependencyResolutionManagement {
 include(
     "testpulse-core",
     "testpulse-spring",
+    "testpulse-cli",
 )
