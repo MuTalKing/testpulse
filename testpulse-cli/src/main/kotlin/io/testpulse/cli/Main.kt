@@ -93,7 +93,7 @@ private fun report(args: List<String>): Int {
         branch = flags["branch"],
         gitSha = flags["git-sha"],
         buildUrl = flags["build-url"],
-    )
+    ).copy(allureReportUrl = flags["allure-report-url"])
     if (run.tests.isEmpty()) {
         println("No allure results in $dir — nothing to upload.")
         return 0
@@ -123,6 +123,19 @@ private fun html(args: List<String>): Int {
         return 2
     }
     val out = flags["out"] ?: flags["o"] ?: "testpulse-report.html"
+    val outPath = Path.of(out)
+
+    // --with-allure: generate an Allure report next to the output and link it.
+    var allureReportUrl = flags["allure-report-url"]
+    if (flags.containsKey("with-allure")) {
+        val reportDir = (outPath.toAbsolutePath().parent ?: Path.of(".")).resolve("allure-report")
+        if (AllureGenerate.run(dir, reportDir)) {
+            allureReportUrl = allureReportUrl ?: "allure-report/index.html"
+            println("Generated a self-contained Allure report at $reportDir/index.html (opens directly, no server).")
+        } else {
+            System.err.println("[testpulse] continuing without the Allure link.")
+        }
+    }
 
     val run = AllureResults.readRun(
         dir = dir,
@@ -131,14 +144,15 @@ private fun html(args: List<String>): Int {
         branch = flags["branch"],
         gitSha = flags["git-sha"],
         buildUrl = flags["build-url"],
-    )
+    ).copy(allureReportUrl = allureReportUrl)
     if (run.tests.isEmpty()) {
         println("No allure results in $dir — nothing to render.")
         return 0
     }
 
-    val outPath = Path.of(out)
-    Files.writeString(outPath, HtmlReport.render(run))
+    val server = flags["server"] ?: System.getenv("TESTPULSE_SERVER")
+    val grafana = flags["grafana"] ?: System.getenv("TESTPULSE_GRAFANA_URL")
+    Files.writeString(outPath, HtmlReport.render(run, serverUrl = server, grafanaUrl = grafana))
     println("Wrote a static report for ${run.tests.size} tests to ${outPath.toAbsolutePath()}")
     return 0
 }
@@ -186,11 +200,17 @@ private fun printUsage() {
           -s, --server      TestPulse server base URL (or the TESTPULSE_SERVER env var)
               --project     Project label (or TESTPULSE_PROJECT)
               --environment Environment label (or TESTPULSE_ENVIRONMENT)
+              --allure-report-url  URL of the published Allure report for this run (drill-in link)
               --branch, --git-sha, --build-url   Optional run metadata
 
         html — render a self-contained static HTML report (no backend needed):
-          -a, --allure      Path to the allure-results directory (required)
-          -o, --out         Output HTML file (default: testpulse-report.html)
+          -a, --allure          Path to the allure-results directory (required)
+          -o, --out             Output HTML file (default: testpulse-report.html)
+              --with-allure     Also run `allure generate` next to the report and link it
+              --allure-report-url  Link to an existing Allure report for the "Open in Allure" button
+              --server          TestPulse server URL — adds a per-test "History" link (or TESTPULSE_SERVER)
+              --grafana         Grafana URL — adds a per-test "Metrics" link (or TESTPULSE_GRAFANA_URL)
+              --project, --environment   Optional labels shown in the header
         """.trimIndent(),
     )
 }

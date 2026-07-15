@@ -24,6 +24,7 @@ data class RunSummary(
     val branch: String?,
     val gitSha: String?,
     val buildUrl: String?,
+    val allureUrl: String?,
     val total: Int,
     val passed: Int,
     val failed: Int,

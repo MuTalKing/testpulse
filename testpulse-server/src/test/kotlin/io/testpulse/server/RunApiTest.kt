@@ -41,6 +41,7 @@ class RunApiTest {
         startedAt = 1_000,
         finishedAt = 2_000,
         branch = "main",
+        allureReportUrl = "http://allure.example/report/42",
         tests = listOf(
             TestResultIngest(testId = "p.C#a", fullName = "p.C#a", name = "a", status = "passed", durationMs = 100),
             TestResultIngest(testId = "p.C#b", fullName = "p.C#b", name = "b", status = "failed", durationMs = 200, message = "boom", flaky = true),
@@ -71,6 +72,7 @@ class RunApiTest {
         assertEquals(1, detail.run.failed)
         assertEquals(1, detail.run.skipped)
         assertEquals("demo", detail.run.project)
+        assertEquals("http://allure.example/report/42", detail.run.allureUrl)
         assertEquals(3, detail.tests.size)
         assertTrue(detail.tests.any { it.name == "b" && it.flaky && it.message == "boom" })
     }

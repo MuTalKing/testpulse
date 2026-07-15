@@ -33,6 +33,10 @@ function statusBadge(status) {
     return `<span class="badge ${s}">${s}</span>`;
 }
 
+function isText(type) {
+    return !!type && (type.startsWith("text/") || type.includes("json") || type.includes("xml") || type.includes("yaml"));
+}
+
 function metricsLink(testId) {
     if (!config.grafanaUrl || !testId) return "";
     const url = `${config.grafanaUrl}/d/testpulse-overview?var-test_id=${encodeURIComponent(testId)}`;
@@ -102,10 +106,15 @@ async function viewRun(id) {
             : "";
         const atts = (t.attachments || []).map(a => {
             const url = `/api/attachments/${encodeURIComponent(a.id)}`;
+            const label = esc(a.name || "attachment");
             if (a.type && a.type.startsWith("image/")) {
-                return `<a href="${url}" target="_blank" rel="noopener" title="${esc(a.name || "")}"><img class="thumb" src="${url}" alt="${esc(a.name || "attachment")}"></a>`;
+                return `<a href="${url}" target="_blank" rel="noopener" title="${label}"><img class="thumb" src="${url}" alt="${label}"></a>`;
             }
-            return `<a class="btn" href="${url}" target="_blank" rel="noopener">${esc(a.name || "attachment")}</a>`;
+            if (isText(a.type)) {
+                // Lazily fetched on expand (see the toggle listener below).
+                return `<details class="att" data-url="${url}"><summary>${label}</summary><pre>…</pre></details>`;
+            }
+            return `<a class="btn" href="${url}" target="_blank" rel="noopener">${label}</a>`;
         }).join("");
         const attsBlock = atts ? `<div class="atts">${atts}</div>` : "";
         const histHref = t.testId ? `#/tests/${encodeURIComponent(t.testId)}` : null;
@@ -133,12 +142,27 @@ async function viewRun(id) {
                 <span class="count broken">broken <b>${r.broken}</b></span>
                 <span class="count skipped">skipped <b>${r.skipped}</b></span>
             </div>
-            ${config.allureUrl ? `<div class="actions" style="margin-top:10px"><a class="btn" href="${esc(config.allureUrl)}" target="_blank" rel="noopener">Allure report ↗</a></div>` : ""}
+            ${(r.allureUrl || config.allureUrl) ? `<div class="actions" style="margin-top:10px"><a class="btn primary" href="${esc(r.allureUrl || config.allureUrl)}" target="_blank" rel="noopener">Open in Allure ↗</a></div>` : ""}
         </div>
         <div class="table-wrap"><table>
             <thead><tr><th>Status</th><th>Test</th><th>Duration</th><th></th></tr></thead>
             <tbody>${testRows}</tbody>
         </table></div>`;
+
+    // Lazily load text attachment bodies the first time they are expanded.
+    app.querySelectorAll("details.att[data-url]").forEach(details => {
+        details.addEventListener("toggle", async () => {
+            if (!details.open || details.dataset.loaded) return;
+            details.dataset.loaded = "1";
+            const pre = details.querySelector("pre");
+            try {
+                const res = await fetch(details.dataset.url);
+                pre.textContent = await res.text();
+            } catch (e) {
+                pre.textContent = "failed to load: " + e.message;
+            }
+        });
+    });
 }
 
 async function viewTestHistory(testId) {

@@ -2,6 +2,8 @@ package io.testpulse.cli
 
 import io.testpulse.report.model.RunIngest
 import io.testpulse.report.model.TestResultIngest
+import java.net.URLEncoder
+import java.util.Base64
 
 /**
  * Renders a run into a single self-contained static HTML file — no backend, no JS runtime, no
@@ -10,7 +12,11 @@ import io.testpulse.report.model.TestResultIngest
  */
 object HtmlReport {
 
-    fun render(run: RunIngest): String {
+    fun render(
+        run: RunIngest,
+        serverUrl: String? = null,
+        grafanaUrl: String? = null,
+    ): String {
         val byStatus = run.tests.groupingBy { it.status.lowercase() }.eachCount()
         val passed = byStatus["passed"] ?: 0
         val failed = byStatus["failed"] ?: 0
@@ -19,7 +25,11 @@ object HtmlReport {
 
         val title = listOfNotNull(run.project, run.environment).joinToString(" / ").ifEmpty { "TestPulse report" }
 
-        val rows = run.tests.joinToString("\n") { testRow(it) }
+        val allureButton = run.allureReportUrl
+            ?.let { """<div style="margin-top:10px"><a class="btn" href="${esc(it)}" target="_blank">Open in Allure ↗</a></div>""" }
+            ?: ""
+
+        val rows = run.tests.joinToString("\n") { testRow(it, serverUrl, grafanaUrl) }
 
         return """
 <!doctype html>
@@ -40,9 +50,10 @@ object HtmlReport {
       <span class="count broken">broken <b>$broken</b></span>
       <span class="count skipped">skipped <b>$skipped</b></span>
     </div>
+    $allureButton
   </div>
   <table>
-    <thead><tr><th>Status</th><th>Test</th><th>Duration</th></tr></thead>
+    <thead><tr><th>Status</th><th>Test</th><th>Duration</th><th></th></tr></thead>
     <tbody>
 $rows
     </tbody>
@@ -52,7 +63,7 @@ $rows
 """.trimIndent()
     }
 
-    private fun testRow(test: TestResultIngest): String {
+    private fun testRow(test: TestResultIngest, serverUrl: String?, grafanaUrl: String?): String {
         val status = test.status.lowercase()
         val flaky = if (test.flaky) """ <span class="badge flaky">flaky</span>""" else ""
         val failInfo = if (status == "failed" || status == "broken") {
@@ -65,21 +76,47 @@ $rows
         val attachments = test.attachments.joinToString("") { attachment ->
             val type = attachment.type ?: "application/octet-stream"
             val dataUri = "data:$type;base64,${attachment.contentBase64}"
-            if (type.startsWith("image/")) {
-                """<a href="$dataUri" target="_blank"><img class="thumb" src="$dataUri" alt="${esc(attachment.name)}"></a>"""
-            } else {
-                """<a class="btn" href="$dataUri" download="${esc(attachment.name ?: "attachment")}">${esc(attachment.name ?: "attachment")}</a>"""
+            val label = esc(attachment.name ?: "attachment")
+            when {
+                type.startsWith("image/") ->
+                    """<a href="$dataUri" target="_blank"><img class="thumb" src="$dataUri" alt="$label"></a>"""
+                isText(type) ->
+                    """<details class="att"><summary>$label</summary><pre>${esc(decodeText(attachment.contentBase64))}</pre></details>"""
+                else ->
+                    """<a class="btn" href="$dataUri" download="$label">$label</a>"""
             }
         }
         val attBlock = if (attachments.isNotEmpty()) """<div class="atts">$attachments</div>""" else ""
         val name = esc(test.name ?: test.fullName ?: test.testId ?: "—")
 
+        // When a server / Grafana is configured, link out per test — no data baked in, so the report
+        // stays small regardless of how long the history is.
+        val links = buildString {
+            val id = test.testId
+            if (id != null && !serverUrl.isNullOrBlank()) {
+                append("""<a class="btn" href="${esc(serverUrl.trimEnd('/'))}/#/tests/${enc(id)}" target="_blank">History ↗</a>""")
+            }
+            if (id != null && !grafanaUrl.isNullOrBlank()) {
+                append("""<a class="btn" href="${esc(grafanaUrl.trimEnd('/'))}/d/testpulse-overview?var-test_id=${enc(id)}" target="_blank">Metrics ↗</a>""")
+            }
+        }
+        val linksCell = if (links.isNotEmpty()) """<div class="actions">$links</div>""" else ""
+
         return """      <tr>
         <td><span class="badge $status">${esc(status)}</span>$flaky</td>
         <td>$name$failInfo$attBlock</td>
         <td>${fmtDuration(test.durationMs)}</td>
+        <td>$linksCell</td>
       </tr>"""
     }
+
+    private fun enc(value: String): String = URLEncoder.encode(value, Charsets.UTF_8).replace("+", "%20")
+
+    private fun isText(type: String): Boolean =
+        type.startsWith("text/") || type.contains("json") || type.contains("xml") || type.contains("yaml")
+
+    private fun decodeText(base64: String): String =
+        runCatching { String(Base64.getDecoder().decode(base64), Charsets.UTF_8) }.getOrElse { "" }
 
     private fun fmtDuration(ms: Long): String =
         if (ms < 1000) "${ms}ms" else String.format(java.util.Locale.ROOT, "%.2fs", ms / 1000.0)
@@ -114,7 +151,9 @@ tbody tr:last-child td{border-bottom:none}
 pre{margin:6px 0 0;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;overflow-x:auto;font-size:12px}
 details summary{cursor:pointer;color:var(--muted);font-size:12px;margin-top:4px}
 .atts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.atts .att{width:100%}.att summary{font-weight:600;color:var(--text)}
 .thumb{height:56px;max-width:120px;object-fit:cover;border:1px solid var(--border);border-radius:6px;display:block}
-.btn{display:inline-block;padding:4px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;text-decoration:none;color:var(--text)}
+.btn{display:inline-block;padding:4px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;text-decoration:none;color:var(--text);white-space:nowrap}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
 """.trim()
 }

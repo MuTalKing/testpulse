@@ -38,6 +38,7 @@ class RunRepository(
                         branch       VARCHAR(255),
                         git_sha      VARCHAR(64),
                         build_url    VARCHAR(1024),
+                        allure_url   VARCHAR(1024),
                         total        INT NOT NULL,
                         passed       INT NOT NULL,
                         failed       INT NOT NULL,
@@ -75,6 +76,8 @@ class RunRepository(
                     )
                     """.trimIndent(),
                 )
+                // For databases created before allure_url existed.
+                st.executeUpdate("ALTER TABLE runs ADD COLUMN IF NOT EXISTS allure_url VARCHAR(1024)")
                 st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_test_results_run ON test_results(run_id)")
                 st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_test_results_testid ON test_results(test_id)")
                 st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_attachments_tr ON attachments(test_result_id)")
@@ -92,8 +95,8 @@ class RunRepository(
                 conn.prepareStatement(
                     """
                     INSERT INTO runs (id, project, environment, started_at, finished_at, branch, git_sha, build_url,
-                                      total, passed, failed, broken, skipped)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                      allure_url, total, passed, failed, broken, skipped)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """.trimIndent(),
                 ).use { ps ->
                     ps.setString(1, runId)
@@ -104,11 +107,12 @@ class RunRepository(
                     ps.setString(6, ingest.branch)
                     ps.setString(7, ingest.gitSha)
                     ps.setString(8, ingest.buildUrl)
-                    ps.setInt(9, totals.total)
-                    ps.setInt(10, totals.passed)
-                    ps.setInt(11, totals.failed)
-                    ps.setInt(12, totals.broken)
-                    ps.setInt(13, totals.skipped)
+                    ps.setString(9, ingest.allureReportUrl)
+                    ps.setInt(10, totals.total)
+                    ps.setInt(11, totals.passed)
+                    ps.setInt(12, totals.failed)
+                    ps.setInt(13, totals.broken)
+                    ps.setInt(14, totals.skipped)
                     ps.executeUpdate()
                 }
 
@@ -276,6 +280,7 @@ class RunRepository(
         branch = getString("branch"),
         gitSha = getString("git_sha"),
         buildUrl = getString("build_url"),
+        allureUrl = getString("allure_url"),
         total = getInt("total"),
         passed = getInt("passed"),
         failed = getInt("failed"),

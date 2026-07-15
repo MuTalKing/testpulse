@@ -50,6 +50,8 @@ VictoriaMetrics exposes this as two low-cardinality series:
 | `testpulse-cli`    | CLI: `upload` (FILE-sink metrics → VictoriaMetrics) and `report` (allure-results → server). |
 | `testpulse-server` | Ktor + Postgres backend: ingests run reports (`POST /api/runs`), serves the run/detail/history API, and hosts the static report UI. |
 | `testpulse-report-model` | Shared run-ingest DTOs, so the CLI (sender) and server (receiver) can't drift apart. |
+| `testpulse-gradle-plugin`| Gradle plugin `io.testpulse.report` — applying it makes a `testpulseReport` task appear. |
+| `testpulse-example`| A runnable Allure + JUnit 5 example wired to the extension — doubles as an end-to-end test. Its `report` task runs the tests, renders the report + Allure, and opens it. |
 
 ## Quick start
 
@@ -143,8 +145,13 @@ To ingest run details (statuses, messages, history) into the server, upload the 
 your suite already produces:
 
 ```bash
-testpulse report --allure ./allure-results --server http://localhost:8080 --project my-service --environment ci
+testpulse report --allure ./allure-results --server http://localhost:8080 --project my-service --environment ci \
+  --allure-report-url https://ci.example.com/job/123/allure/
 ```
+
+TestPulse owns the run list, test names, status, history and the metrics link; for the deep
+per-test **step** detail it links out to the Allure report you publish (`--allure-report-url`),
+shown as an "Open in Allure" button on the run — no separate step viewer to maintain.
 
 When Allure is on the test classpath, the extension stamps its `test_id` onto each result as a
 `testpulse.id` label, so report rows join the metric series by the exact same id (`@StableId`
@@ -156,6 +163,54 @@ requests) and open it in a browser — the five-minute entry point:
 ```bash
 testpulse html --allure ./allure-results --out testpulse-report.html
 ```
+
+Add `--with-allure` to also run `allure generate --single-file` next to the report and wire up the
+"Open in Allure" drill-in. The Allure report is a single self-contained `index.html`, so everything
+opens straight from disk — no web server (needs the Allure CLI on PATH):
+
+```bash
+testpulse html --allure ./allure-results --out site/index.html --with-allure
+# then just open site/index.html — "Open in Allure" drills into the steps
+```
+
+If a TestPulse server and/or Grafana are running, pass their URLs to add a per-test **History**
+link (to the server's cross-run history) and **Metrics** link (to the Grafana dashboard by
+`test_id`). These are just links, so the report stays small no matter how long the history is:
+
+```bash
+testpulse html --allure ./allure-results --server http://localhost:8088 --grafana http://localhost:3000
+```
+
+The `testpulse-example` module wraps this into a one-button Gradle task — run tests, render the
+report, open it in the browser:
+
+```bash
+./gradlew :testpulse-example:report
+```
+
+### Gradle plugin
+
+So the task appears **automatically** in any project (no task to hand-write), apply the plugin —
+`testpulseReport` shows up under the `verification` group. Press it after a local test run to
+render the report from `build/allure-results` and open it:
+
+```kotlin
+plugins {
+    id("io.testpulse.report") version "0.1.0"
+}
+
+testpulseReport {          // all optional — conventions shown
+    allureResults.set(layout.buildDirectory.dir("allure-results"))
+    withAllure.set(true)   // also generate + link the Allure single-file report (needs Allure CLI)
+    openInBrowser.set(true)
+    // server.set("http://localhost:8088")    // adds per-test History links
+    // grafana.set("http://localhost:3000")   // adds per-test Metrics links
+    // projectLabel.set("my-service"); environment.set("ci")
+}
+```
+
+(A regular dependency can't add tasks — only a plugin can, which is why this is a plugin.
+Publishing to the Gradle Plugin Portal / an internal repo is on the roadmap.)
 
 ## Backend
 
@@ -202,6 +257,8 @@ Toolchain: Gradle 9.1, Kotlin 2.2.20, JVM target 17.
 - [x] Attachments → object storage (minio), thumbnails in the UI, configurable Allure deep-link
 - [x] Server containerized — `docker compose up` brings up the whole stack
 - [x] Zero-infra static HTML report fallback (`testpulse html`)
+- [x] Gradle plugin `io.testpulse.report` — `testpulseReport` task appears on apply
+- [ ] Publish to Maven Central + Gradle Plugin Portal (so it's consumable, not built from source)
 
 ## License
 

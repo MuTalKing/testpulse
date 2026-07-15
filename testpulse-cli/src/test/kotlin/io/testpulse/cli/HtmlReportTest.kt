@@ -45,6 +45,29 @@ class HtmlReportTest {
     }
 
     @Test
+    fun `adds per-test History and Metrics links when server and grafana are set`() {
+        val run = RunIngest(
+            project = "shop",
+            tests = listOf(TestResultIngest(testId = "io.shop.OrderTest#checkout", name = "checkout", status = "passed", durationMs = 100)),
+        )
+
+        val html = HtmlReport.render(run, serverUrl = "http://tp:8080/", grafanaUrl = "http://graf:3000")
+
+        assertTrue(html.contains("History ↗"))
+        assertTrue(html.contains("Metrics ↗"))
+        // test_id is URL-encoded (# -> %23), server trailing slash trimmed
+        assertTrue(html.contains("http://tp:8080/#/tests/io.shop.OrderTest%23checkout"), html)
+        assertTrue(html.contains("http://graf:3000/d/testpulse-overview?var-test_id=io.shop.OrderTest%23checkout"), html)
+    }
+
+    @Test
+    fun `no History or Metrics links without server and grafana`() {
+        val html = HtmlReport.render(RunIngest(tests = listOf(TestResultIngest(testId = "a", status = "passed"))))
+        assertFalse(html.contains("History ↗"))
+        assertFalse(html.contains("Metrics ↗"))
+    }
+
+    @Test
     fun `report is fully self-contained - no external requests`() {
         val html = HtmlReport.render(RunIngest(tests = listOf(TestResultIngest(status = "passed"))))
         assertFalse(html.contains("http://"), "no external http references")

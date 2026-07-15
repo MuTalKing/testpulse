@@ -16,6 +16,8 @@ data class RunIngest(
     val branch: String? = null,
     val gitSha: String? = null,
     val buildUrl: String? = null,
+    /** URL of the generated Allure report for this run — the hybrid "drill into steps" link. */
+    val allureReportUrl: String? = null,
     val tests: List<TestResultIngest> = emptyList(),
 )
 

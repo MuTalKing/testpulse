@@ -108,6 +108,12 @@ td.wrap { white-space: normal; }
     height: 56px; max-width: 120px; object-fit: cover;
     border: 1px solid var(--border); border-radius: 6px; display: block;
 }
+.atts .att { width: 100%; }
+.att summary { font-weight: 600; color: var(--text); }
+.att pre {
+    margin: 6px 0 0; padding: 10px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 7px; overflow-x: auto; font-size: 12px; white-space: pre;
+}
 pre.trace {
     margin: 6px 0 0; padding: 10px; background: var(--bg); border: 1px solid var(--border);
     border-radius: 7px; overflow-x: auto; font-size: 12px; white-space: pre;

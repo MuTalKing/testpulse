@@ -23,4 +23,6 @@ include(
     "testpulse-cli",
     "testpulse-server",
     "testpulse-report-model",
+    "testpulse-gradle-plugin",
+    "testpulse-example",
 )

@@ -2,6 +2,11 @@
 .gradle/
 build/
 
+### Generated reports (artifacts) ###
+/allure-report/
+/site/
+testpulse-report.html
+
 ### Claude Code (local tooling state) ###
 .claude/logs/
 .claude/tasks/
