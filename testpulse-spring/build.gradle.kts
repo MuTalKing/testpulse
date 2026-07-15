@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     kotlin("jvm")
     `java-library`
+    id("com.vanniktech.maven.publish") version "0.37.0"
 }
 
 kotlin {
@@ -33,4 +34,9 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+// Sign only when a GPG key is configured, so publishToMavenLocal works without one.
+tasks.withType<org.gradle.plugins.signing.Sign>().configureEach {
+    onlyIf { project.hasProperty("signing.keyId") || project.hasProperty("signingInMemoryKey") }
 }

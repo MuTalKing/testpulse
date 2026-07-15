@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     kotlin("jvm")
     `java-library`
+    id("com.vanniktech.maven.publish") version "0.37.0"
 }
 
 kotlin {
@@ -34,4 +35,9 @@ tasks.test {
     // Sample suites (e.g. TestPulseExtensionTest$SampleTests) are driven explicitly by
     // EngineTestKit; exclude them so the outer runner does not execute them directly.
     exclude("**/*SampleTests*")
+}
+
+// Sign only when a GPG key is configured, so publishToMavenLocal works without one.
+tasks.withType<org.gradle.plugins.signing.Sign>().configureEach {
+    onlyIf { project.hasProperty("signing.keyId") || project.hasProperty("signingInMemoryKey") }
 }
