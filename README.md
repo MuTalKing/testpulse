@@ -209,8 +209,16 @@ testpulseReport {          // all optional — conventions shown
 }
 ```
 
-(A regular dependency can't add tasks — only a plugin can, which is why this is a plugin.
-Publishing to the Gradle Plugin Portal / an internal repo is on the roadmap.)
+(A regular dependency can't add tasks — only a plugin can, which is why this is a plugin.)
+
+Until it's on the Gradle Plugin Portal, publish to your Maven Local and consume from there:
+
+```bash
+./gradlew publishToMavenLocal   # publishes the plugin + testpulse-cli + testpulse-report-model
+```
+
+Then in the consuming project add `mavenLocal()` to `pluginManagement.repositories` (settings) and
+apply `id("io.testpulse.report") version "0.1.0-SNAPSHOT"`.
 
 ## Backend
 
@@ -258,8 +266,9 @@ Toolchain: Gradle 9.1, Kotlin 2.2.20, JVM target 17.
 - [x] Server containerized — `docker compose up` brings up the whole stack
 - [x] Zero-infra static HTML report fallback (`testpulse html`)
 - [x] Gradle plugin `io.testpulse.report` — `testpulseReport` task appears on apply
-- [ ] Publish to Maven Central + Gradle Plugin Portal (so it's consumable, not built from source)
+- [x] Publish to Maven Local (`publishToMavenLocal`) — plugin + cli + report-model
+- [ ] Publish to Maven Central + Gradle Plugin Portal (so it's consumable without mavenLocal)
 
 ## License
 
-TBD.
+[Apache License 2.0](LICENSE).

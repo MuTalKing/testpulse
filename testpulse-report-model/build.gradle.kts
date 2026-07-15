@@ -4,6 +4,13 @@ plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
     `java-library`
+    `maven-publish`
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") { from(components["java"]) }
+    }
 }
 
 kotlin {

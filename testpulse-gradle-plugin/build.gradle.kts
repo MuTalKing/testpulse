@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     kotlin("jvm")
     `java-gradle-plugin`
+    `maven-publish`
 }
 
 kotlin {
