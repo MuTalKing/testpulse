@@ -22,8 +22,13 @@ dependencies {
     compileOnly("org.junit.jupiter:junit-jupiter-api:5.11.3")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
+    testImplementation("org.junit.platform:junit-platform-testkit:1.11.3")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.11.3")
 }
 
 tasks.test {
     useJUnitPlatform()
+    // Sample suites (e.g. TestPulseExtensionTest$SampleTests) are driven explicitly by
+    // EngineTestKit; exclude them so the outer runner does not execute them directly.
+    exclude("**/*SampleTests*")
 }

@@ -25,7 +25,10 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot:3.3.5")
     testImplementation("org.springframework:spring-core:6.1.14")
+    // YamlPropertySourceLoader needs SnakeYAML at runtime; a real Spring Boot app already has it.
+    testImplementation("org.yaml:snakeyaml:2.2")
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.11.3")
 }
 
 tasks.test {

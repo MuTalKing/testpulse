@@ -1,10 +1,16 @@
 package io.testpulse.junit
 
 import io.testpulse.config.ConfigResolver
+import io.testpulse.config.OutputMode
 import io.testpulse.config.TestPulseConfig
+import io.testpulse.metric.FileMetricSink
+import io.testpulse.metric.MetricSample
+import io.testpulse.metric.MetricSink
+import io.testpulse.metric.NoopMetricSink
 import org.junit.jupiter.api.extension.AfterTestExecutionCallback
 import org.junit.jupiter.api.extension.BeforeTestExecutionCallback
 import org.junit.jupiter.api.extension.ExtensionContext
+import java.nio.file.Path
 
 /**
  * JUnit 5 extension that times each test and records its outcome as a TestPulse metric sample.
@@ -13,14 +19,18 @@ import org.junit.jupiter.api.extension.ExtensionContext
  * `junit.jupiter.extensions.autodetection.enabled=true`, so consumers only add the dependency
  * and a couple of config values — no `@ExtendWith` needed.
  *
- * Configuration is resolved once, lazily, on first use. See [ConfigResolver].
- *
- * NOTE: metric emission (duration + status → VictoriaMetrics line protocol) is not wired yet;
- * this scaffold establishes the config wiring and lifecycle hooks. See the design notes.
+ * Configuration and the metric sink are resolved once, lazily. See [ConfigResolver].
  */
 class TestPulseExtension : BeforeTestExecutionCallback, AfterTestExecutionCallback {
 
     private val config: TestPulseConfig by lazy { ConfigResolver.resolve() }
+
+    private val sink: MetricSink by lazy {
+        when (config.output) {
+            OutputMode.FILE -> FileMetricSink(Path.of(config.outputDir))
+            OutputMode.PUSH -> NoopMetricSink
+        }
+    }
 
     override fun beforeTestExecution(context: ExtensionContext) {
         if (!config.enabled) return
@@ -30,11 +40,19 @@ class TestPulseExtension : BeforeTestExecutionCallback, AfterTestExecutionCallba
     override fun afterTestExecution(context: ExtensionContext) {
         if (!config.enabled) return
         val start = store(context).remove(START_NANOS) as? Long ?: return
-        @Suppress("UNUSED_VARIABLE")
-        val durationMs = (System.nanoTime() - start) / 1_000_000
-        val passed = context.executionException.isEmpty
-        // TODO: emit sample -> autotest_duration_seconds / autotest_passed keyed by test_id(context).
-        //       Sink selected by config.output (FILE | PUSH).
+
+        val sample = MetricSample(
+            testId = TestIds.compute(context),
+            testClass = context.testClass.map { it.name }.orElse("UnknownClass"),
+            suite = context.testClass.map { it.packageName }.orElse(null)?.ifEmpty { null },
+            project = config.project,
+            environment = config.environment,
+            durationSeconds = (System.nanoTime() - start) / NANOS_PER_SECOND,
+            passed = context.executionException.isEmpty,
+        )
+
+        runCatching { sink.emit(sample) }
+            .onFailure { System.err.println("[testpulse] failed to record metric: ${it.message}") }
     }
 
     private fun store(context: ExtensionContext): ExtensionContext.Store =
@@ -44,5 +62,6 @@ class TestPulseExtension : BeforeTestExecutionCallback, AfterTestExecutionCallba
         val NAMESPACE: ExtensionContext.Namespace =
             ExtensionContext.Namespace.create(TestPulseExtension::class.java)
         const val START_NANOS = "startNanos"
+        const val NANOS_PER_SECOND = 1_000_000_000.0
     }
 }
