@@ -33,7 +33,11 @@ object LineProtocol {
         val passed = if (sample.passed) 1 else 0
         // Fixed decimal (Locale.ROOT) avoids scientific notation and locale decimal commas.
         val duration = String.format(Locale.ROOT, "%.6f", sample.durationSeconds)
-        val fields = "duration_seconds=$duration,passed=${passed}i"
+        val fields = buildString {
+            append("duration_seconds=").append(duration)
+            append(",passed=").append(passed).append('i')
+            if (sample.flaky) append(",flaky=1i")
+        }
 
         return "$MEASUREMENT,$tagSet $fields"
     }

@@ -4,6 +4,7 @@ import io.testpulse.config.ConfigResolver
 import io.testpulse.config.OutputMode
 import io.testpulse.config.TestPulseConfig
 import io.testpulse.metric.FileMetricSink
+import io.testpulse.metric.FlakyTracker
 import io.testpulse.metric.MetricSample
 import io.testpulse.metric.MetricSink
 import io.testpulse.metric.NoopMetricSink
@@ -44,14 +45,17 @@ class TestPulseExtension : BeforeTestExecutionCallback, AfterTestExecutionCallba
         if (!config.enabled) return
         val start = store(context).remove(START_NANOS) as? Long ?: return
 
+        val testId = TestIds.compute(context)
+        val passed = context.executionException.isEmpty
         val sample = MetricSample(
-            testId = TestIds.compute(context),
+            testId = testId,
             testClass = context.testClass.map { it.name }.orElse("UnknownClass"),
             suite = context.testClass.map { it.packageName }.orElse(null)?.ifEmpty { null },
             project = config.project,
             environment = config.environment,
             durationSeconds = (System.nanoTime() - start) / NANOS_PER_SECOND,
-            passed = context.executionException.isEmpty,
+            passed = passed,
+            flaky = FLAKY.record(testId, passed),
         )
 
         runCatching { sink.emit(sample) }
@@ -66,5 +70,8 @@ class TestPulseExtension : BeforeTestExecutionCallback, AfterTestExecutionCallba
             ExtensionContext.Namespace.create(TestPulseExtension::class.java)
         const val START_NANOS = "startNanos"
         const val NANOS_PER_SECOND = 1_000_000_000.0
+
+        /** Shared across all extension instances in the JVM so retries of a test are correlated. */
+        val FLAKY = FlakyTracker()
     }
 }

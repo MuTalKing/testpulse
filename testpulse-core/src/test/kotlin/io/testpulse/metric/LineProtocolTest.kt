@@ -46,6 +46,24 @@ class LineProtocolTest {
     }
 
     @Test
+    fun `appends flaky field only when flaky`() {
+        val line = LineProtocol.format(
+            MetricSample(
+                testId = "orders.checkout",
+                testClass = "io.shop.OrderTest",
+                suite = null,
+                project = null,
+                environment = "ci",
+                durationSeconds = 2.0,
+                passed = true,
+                flaky = true,
+            ),
+        )
+
+        assertTrue(line.endsWith("duration_seconds=2.000000,passed=1i,flaky=1i"), line)
+    }
+
+    @Test
     fun `escapes spaces commas and equals in tag values`() {
         val line = LineProtocol.format(
             MetricSample(

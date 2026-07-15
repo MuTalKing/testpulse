@@ -23,4 +23,10 @@ data class MetricSample(
     val environment: String,
     val durationSeconds: Double,
     val passed: Boolean,
+    /**
+     * True on the execution that first makes this [testId] show a mixed pass/fail outcome within
+     * the run — i.e. a retry flipped it. Adds an `autotest_flaky=1` series. See
+     * [io.testpulse.metric.FlakyTracker].
+     */
+    val flaky: Boolean = false,
 )

@@ -39,6 +39,7 @@ VictoriaMetrics exposes this as two low-cardinality series:
 
 - `autotest_duration_seconds{test_id,class,suite,project,environment}`
 - `autotest_passed{...}` = `1 | 0`
+- `autotest_flaky{...}` = `1` — emitted when a retry flips a `test_id` between pass and fail in one run
 
 ## Modules
 
@@ -138,7 +139,7 @@ Toolchain: Gradle 9.1, Kotlin 2.2.20, JVM target 17.
 - [x] Config via env / system properties / Spring `application.yml`
 - [x] Auto-registration via `ServiceLoader`
 - [x] PUSH sink → VictoriaMetrics
-- [ ] Flaky detection (fail-then-pass within a run)
+- [x] Flaky detection (fail-then-pass within a run, same JVM)
 - [ ] CLI uploader (`metrics.influx` + `allure-results` → backend)
 - [ ] Backend: `docker compose up` (VictoriaMetrics + Postgres + minio + Grafana + report UI)
 - [ ] Zero-infra static HTML report fallback
