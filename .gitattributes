@@ -1,0 +1,28 @@
+# Normalize line endings: store as LF in the repo, check out native per platform.
+* text=auto
+
+# Source and config are text
+*.kt         text
+*.kts        text
+*.java       text
+*.xml        text
+*.yml        text
+*.yaml       text
+*.properties text
+*.md         text
+*.txt        text
+
+# Windows scripts must keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Unix scripts and the Gradle wrapper launcher must keep LF
+*.sh    text eol=lf
+gradlew text eol=lf
+
+# Binary assets — never munge
+*.jar binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary

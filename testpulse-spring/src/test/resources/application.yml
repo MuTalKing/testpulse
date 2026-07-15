@@ -1,0 +1,6 @@
+testpulse:
+  project: billing
+  environment: staging
+  output: push
+  output-dir: build/tp-out
+  endpoint: http://victoria:8428

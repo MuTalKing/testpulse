@@ -1,0 +1,2 @@
+io.testpulse.config.SystemPropertiesConfigSource
+io.testpulse.config.EnvConfigSource
