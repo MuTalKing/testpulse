@@ -7,6 +7,7 @@ import io.testpulse.metric.FileMetricSink
 import io.testpulse.metric.MetricSample
 import io.testpulse.metric.MetricSink
 import io.testpulse.metric.NoopMetricSink
+import io.testpulse.metric.PushMetricSink
 import org.junit.jupiter.api.extension.AfterTestExecutionCallback
 import org.junit.jupiter.api.extension.BeforeTestExecutionCallback
 import org.junit.jupiter.api.extension.ExtensionContext
@@ -28,7 +29,9 @@ class TestPulseExtension : BeforeTestExecutionCallback, AfterTestExecutionCallba
     private val sink: MetricSink by lazy {
         when (config.output) {
             OutputMode.FILE -> FileMetricSink(Path.of(config.outputDir))
-            OutputMode.PUSH -> NoopMetricSink
+            OutputMode.PUSH -> config.endpoint
+                ?.let { PushMetricSink(it) }
+                ?: NoopMetricSink // push requested but no endpoint configured
         }
     }
 
