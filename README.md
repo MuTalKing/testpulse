@@ -50,7 +50,7 @@ VictoriaMetrics exposes this as two low-cardinality series:
 | `testpulse-cli`    | CLI: `upload` (FILE-sink metrics → VictoriaMetrics) and `report` (allure-results → server). |
 | `testpulse-server` | Ktor + Postgres backend: ingests run reports (`POST /api/runs`), serves the run/detail/history API, and hosts the static report UI. |
 | `testpulse-report-model` | Shared run-ingest DTOs, so the CLI (sender) and server (receiver) can't drift apart. |
-| `testpulse-gradle-plugin`| Gradle plugin `io.testpulse.report` — applying it makes a `testpulseReport` task appear. |
+| `testpulse-gradle-plugin`| Gradle plugin `io.github.mutalking.testpulse` — applying it makes a `testpulseReport` task appear. |
 | `testpulse-example`| A runnable Allure + JUnit 5 example wired to the extension — doubles as an end-to-end test. Its `report` task runs the tests, renders the report + Allure, and opens it. |
 
 ## Quick start
@@ -196,7 +196,7 @@ render the report from `build/allure-results` and open it:
 
 ```kotlin
 plugins {
-    id("io.testpulse.report") version "0.1.0"
+    id("io.github.mutalking.testpulse") version "0.1.0"
 }
 
 testpulseReport {          // all optional — conventions shown
@@ -218,7 +218,7 @@ Until it's on the Gradle Plugin Portal, publish to your Maven Local and consume 
 ```
 
 Then in the consuming project add `mavenLocal()` to `pluginManagement.repositories` (settings) and
-apply `id("io.testpulse.report") version "0.1.0-SNAPSHOT"`.
+apply `id("io.github.mutalking.testpulse") version "0.1.0-SNAPSHOT"`.
 
 ## Backend
 
@@ -265,7 +265,7 @@ Toolchain: Gradle 9.1, Kotlin 2.2.20, JVM target 17.
 - [x] Attachments → object storage (minio), thumbnails in the UI, configurable Allure deep-link
 - [x] Server containerized — `docker compose up` brings up the whole stack
 - [x] Zero-infra static HTML report fallback (`testpulse html`)
-- [x] Gradle plugin `io.testpulse.report` — `testpulseReport` task appears on apply
+- [x] Gradle plugin `io.github.mutalking.testpulse` — `testpulseReport` task appears on apply
 - [x] Publish to Maven Local (`publishToMavenLocal`) — plugin + cli + report-model
 - [ ] Publish to Maven Central + Gradle Plugin Portal (so it's consumable without mavenLocal)
 

@@ -15,7 +15,7 @@ class TestPulseReportPluginTest {
         Files.writeString(
             projectDir.resolve("build.gradle.kts"),
             """
-            plugins { id("io.testpulse.report") }
+            plugins { id("io.github.mutalking.testpulse") }
             testpulseReport {
                 withAllure.set(false)
                 openInBrowser.set(false)
@@ -51,7 +51,7 @@ class TestPulseReportPluginTest {
         Files.writeString(
             projectDir.resolve("build.gradle.kts"),
             """
-            plugins { id("io.testpulse.report") }
+            plugins { id("io.github.mutalking.testpulse") }
             testpulseReport { withAllure.set(false); openInBrowser.set(false) }
             """.trimIndent(),
         )

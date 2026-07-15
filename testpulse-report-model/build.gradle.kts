@@ -4,13 +4,7 @@ plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
     `java-library`
-    `maven-publish`
-}
-
-publishing {
-    publications {
-        create<MavenPublication>("maven") { from(components["java"]) }
-    }
+    id("com.vanniktech.maven.publish") version "0.37.0"
 }
 
 kotlin {
@@ -27,4 +21,9 @@ java {
 dependencies {
     // Exposed to consumers so both the CLI and the server share one serialization runtime.
     api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+}
+
+// Sign only when a GPG key is configured, so publishToMavenLocal works without one.
+tasks.withType<org.gradle.plugins.signing.Sign>().configureEach {
+    onlyIf { project.hasProperty("signing.keyId") || project.hasProperty("signingInMemoryKey") }
 }

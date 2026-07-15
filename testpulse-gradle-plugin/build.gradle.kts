@@ -3,7 +3,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     kotlin("jvm")
     `java-gradle-plugin`
-    `maven-publish`
+    `maven-publish` // for publishToMavenLocal during local testing
+    id("com.gradle.plugin-publish") version "2.1.1" // publishes to the Gradle Plugin Portal
 }
 
 kotlin {
@@ -28,12 +29,16 @@ dependencies {
 }
 
 gradlePlugin {
+    // TODO: point at your GitHub repo (required by the Plugin Portal).
+    website.set("https://github.com/MuTalKing/testpulse")
+    vcsUrl.set("https://github.com/MuTalKing/testpulse")
     plugins {
         create("testpulseReport") {
-            id = "io.testpulse.report"
+            id = "io.github.mutalking.testpulse"
             implementationClass = "io.testpulse.gradle.TestPulseReportPlugin"
             displayName = "TestPulse report"
             description = "Adds a task that renders the TestPulse report from allure-results and opens it."
+            tags.set(listOf("testing", "allure", "report", "metrics", "junit"))
         }
     }
 }
