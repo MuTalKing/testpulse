@@ -8,7 +8,7 @@ can actually trust — duration trends, degradation, pass-rate, slowest/flakiest
 VictoriaMetrics + Grafana, and a light run report joined to those metrics by a stable `test_id`.
 No test-management, no Jira sync, no RBAC. Just honest numbers and a readable report.
 
-> **Status:** functional, first release `0.0.1`. Libraries are on **Maven Central**
+> **Status:** functional, released as `0.0.2`. Libraries are on **Maven Central**
 > (`io.github.mutalking:testpulse-*`), the Gradle plugin on the **Gradle Plugin Portal**
 > (`io.github.mutalking.testpulse`), and the backend server as a **GHCR image**
 > (`ghcr.io/mutalking/testpulse-server`).
@@ -27,9 +27,9 @@ Both are linked by `test_id`: from a test in the report you jump straight to its
 Add the extension to your test dependencies:
 
 ```kotlin
-testImplementation("io.github.mutalking:testpulse-core:0.0.1")
+testImplementation("io.github.mutalking:testpulse-core:0.0.2")
 // optional, only if you configure via application.yml in a Spring project:
-testImplementation("io.github.mutalking:testpulse-spring:0.0.1")
+testImplementation("io.github.mutalking:testpulse-spring:0.0.2")
 ```
 
 Register it one of two ways:
@@ -61,7 +61,7 @@ can't add tasks — only a plugin can):
 ```kotlin
 // settings.gradle.kts → pluginManagement { repositories { gradlePluginPortal(); mavenCentral() } }
 plugins {
-    id("io.github.mutalking.testpulse") version "0.0.1"
+    id("io.github.mutalking.testpulse") version "0.0.2"
 }
 
 testpulseReport {          // all optional — conventions shown
@@ -140,8 +140,10 @@ When Allure is on the classpath, the extension stamps this `test_id` onto each r
 
 ## CLI
 
-The `testpulse-cli` jar is on Maven Central; for the `testpulse` command build the distribution
-with `./gradlew :testpulse-cli:installDist` (bin under `testpulse-cli/build/install/testpulse/bin`).
+Get the `testpulse` command by downloading the distribution zip from the
+[GitHub Releases](https://github.com/MuTalKing/testpulse/releases) (attached by CI on each tag), or
+build it from source with `./gradlew :testpulse-cli:installDist` (bin under
+`testpulse-cli/build/install/testpulse/bin`). The jar is also on Maven Central.
 
 ```bash
 # upload FILE-sink metrics to VictoriaMetrics (stamps one run-finish timestamp), a post-test CI step
@@ -212,7 +214,7 @@ Requires a JDK (Gradle 9.1 runs on 17–25). Uses the Gradle wrapper.
 Toolchain: Gradle 9.1, Kotlin 2.2.20, JVM target 17.
 
 Publishing: `./gradlew publishToMavenCentral` (libraries), `./gradlew publishPlugins` (plugin), and
-a `git tag v0.0.1` push triggers the GHCR server-image workflow.
+a `git tag v0.0.2` push triggers the GHCR server-image workflow.
 
 ## Roadmap
 

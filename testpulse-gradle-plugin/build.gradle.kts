@@ -29,7 +29,6 @@ dependencies {
 }
 
 gradlePlugin {
-    // TODO: point at your GitHub repo (required by the Plugin Portal).
     website.set("https://github.com/MuTalKing/testpulse")
     vcsUrl.set("https://github.com/MuTalKing/testpulse")
     plugins {

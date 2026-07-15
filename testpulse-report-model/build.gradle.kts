@@ -4,7 +4,7 @@ plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
     `java-library`
-    id("com.vanniktech.maven.publish") version "0.37.0"
+    id("com.vanniktech.maven.publish")
 }
 
 kotlin {
